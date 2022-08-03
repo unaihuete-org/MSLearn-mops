@@ -1,5 +1,5 @@
 # Import libraries
-
+import mlflow
 import argparse
 import glob
 import os
@@ -11,17 +11,17 @@ from sklearn.linear_model import LogisticRegression
 
 # define functions
 def main(args):
-    # TO DO: enable autologging
-
+    # enable auto logging
+    mlflow.autolog()
 
     # read data
     df = get_csvs_df(args.training_data)
 
-    # split data
-    X_train, X_test, y_train, y_test = split_data(df)
+    # process data
+    X_train, X_test, y_train, y_test = process_data(df)
 
     # train model
-    model = train_model(args.reg_rate, X_train, X_test, y_train, y_test)
+    train_model(args.reg_rate, X_train, X_test, y_train, y_test)
 
 
 def get_csvs_df(path):
@@ -33,16 +33,26 @@ def get_csvs_df(path):
     return pd.concat((pd.read_csv(f) for f in csv_files), sort=False)
 
 
-# TO DO: add function to split data
+def process_data(df):
+    # split dataframe into X and y
+    X, y = df[['Pregnancies', 'PlasmaGlucose', 'DiastolicBloodPressure',
+               'TricepsThickness', 'SerumInsulin', 'BMI', 'DiabetesPedigree',
+               'Age']].values, df['Diabetic'].values
+
+    # train/test split
+    X_train, X_test, y_train, y_test = train_test_split(
+                                                        X, y, test_size=0.30,
+                                                        random_state=0)
+
+    # return splits and encoder
+    return X_train, X_test, y_train, y_test
 
 
 def train_model(reg_rate, X_train, X_test, y_train, y_test):
     # train model
-    model = LogisticRegression(C=1/reg_rate,
-                               solver="liblinear").fit(X_train, y_train)
+    LogisticRegression(C=1/reg_rate,
+                       solver="liblinear").fit(X_train, y_train)
 
-    # return model
-    return model
 
 def parse_args():
     # setup arg parser
@@ -52,13 +62,14 @@ def parse_args():
     parser.add_argument("--training_data", dest='training_data',
                         type=str)
     parser.add_argument("--reg_rate", dest='reg_rate',
-                        type=float, default=0.01)
+                        type=float, default=0.1)
 
     # parse args
     args = parser.parse_args()
 
     # return args
     return args
+
 
 # run script
 if __name__ == "__main__":
